@@ -36,6 +36,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.text.TextUtils
 import com.google.android.gms.location.ActivityRecognitionResult
 import com.google.android.gms.location.ActivityTransition
@@ -54,7 +55,7 @@ class ActivityTransitionsReceiver : BroadcastReceiver() {
     private val LOGGER = LoggerFactory.getLogger(ActivityTransitionsReceiver::class.java)
 
     override fun onReceive(context: Context, intent: Intent) {
-        LOGGER.debug("onReceive")
+        // LOGGER.debug("onReceive")
 
         if (!TextUtils.equals(INTENT_ACTION, intent.action)) {
             LOGGER.debug("Received an unsupported action in TransitionsReceiver: action = ${intent.action}")
@@ -63,7 +64,7 @@ class ActivityTransitionsReceiver : BroadcastReceiver() {
 
         val sharedPrefs = context.getSharedPreferences(TRANSITION_PREFS, Context.MODE_PRIVATE)
         val currentActivityType = sharedPrefs.getInt(CURRENT_ACTIVITY_TYPE, -1)
-        LOGGER.debug("CURRENT ACTIVITY TYPE: ${toActivityString(currentActivityType)}")
+        // LOGGER.debug("CURRENT ACTIVITY TYPE: ${toActivityString(currentActivityType)}")
 
         if (ActivityTransitionResult.hasResult(intent)) {
             val result = ActivityTransitionResult.extractResult(intent)
@@ -97,25 +98,24 @@ class ActivityTransitionsReceiver : BroadcastReceiver() {
     }
 
     private fun onStartedWalking(context: Context) {
-        LOGGER.debug("onStartedWalking ${SimpleDateFormat(
-                "HH:mm:ss",
-                Locale.US
-        ).format(Date())}")
+        LOGGER.debug("onStartedWalking ${SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())}")
+        startService(context, ActivityRecorderService.Event.STARTED_WALKING)
+    }
+
+    private fun startService(context: Context, event: ActivityRecorderService.Event) {
         val i = Intent(context, ActivityRecorderService::class.java)
-        i.putExtra(ActivityRecorderService.EVENT, ActivityRecorderService.STARTED_WALKING)
-        context.startService(i)
+        i.putExtra(ActivityRecorderService.EVENT, event)
+        if (RUNNING_O_OR_LATER) {
+            context.startForegroundService(i)
+        } else {
+            context.startService(i)
+        }
     }
 
     private fun onStoppedWalking(context: Context) {
-        LOGGER.debug("onStoppedWalking ${SimpleDateFormat(
-                "HH:mm:ss",
-                Locale.US
-        ).format(Date())}")
-        val i = Intent(context, ActivityRecorderService::class.java)
-        i.putExtra(ActivityRecorderService.EVENT, ActivityRecorderService.STOPPED_WALKING)
-        context.startService(i)
+        LOGGER.debug("onStoppedWalking ${SimpleDateFormat("HH:mm:ss", Locale.US).format(Date())}")
+        startService(context, ActivityRecorderService.Event.STOPPED_WALKING)
     }
-
 
     private fun handleDetectedActivity(context: Context, detectedActivity: DetectedActivity, sharedPrefs: SharedPreferences) {
         if (detectedActivity.confidence > 40) {
@@ -149,6 +149,8 @@ class ActivityTransitionsReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        private val RUNNING_O_OR_LATER = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+
         // Action fired when transitions are triggered.
         const val INTENT_ACTION = "org.sagebionetworks.research.mpower.TRANSITIONS_RECEIVER_ACTION"
 

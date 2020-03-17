@@ -35,36 +35,45 @@ package org.sagebionetworks.research.mpower
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.common.collect.ImmutableMap
+import com.google.common.collect.Sets
 import dagger.android.DaggerService
 import io.reactivex.Single
+import io.reactivex.disposables.CompositeDisposable
 import org.sagebionetworks.research.domain.async.AsyncActionConfiguration
 import org.sagebionetworks.research.domain.async.DeviceMotionRecorderConfigurationImpl
-import org.sagebionetworks.research.domain.async.DistanceRecorderConfigurationImpl
 import org.sagebionetworks.research.domain.async.MotionRecorderType
-import org.sagebionetworks.research.domain.async.RecorderType
-import org.sagebionetworks.research.domain.result.interfaces.TaskResult
+import org.sagebionetworks.research.domain.async.RecorderConfiguration
+import org.sagebionetworks.research.domain.result.interfaces.Result
 import org.sagebionetworks.research.domain.step.implementations.StepBase
 import org.sagebionetworks.research.domain.step.interfaces.Step
-import org.sagebionetworks.research.domain.task.Task
+import org.sagebionetworks.research.domain.task.navigation.NavDirection
 import org.sagebionetworks.research.domain.task.navigation.TaskBase
-import org.sagebionetworks.research.presentation.inject.RecorderConfigPresentationFactory
 import org.sagebionetworks.research.presentation.perform_task.TaskResultManager
 import org.sagebionetworks.research.presentation.perform_task.TaskResultManager.TaskResultManagerConnection
+import org.sagebionetworks.research.presentation.recorder.Recorder
+import org.sagebionetworks.research.presentation.recorder.RecorderConfigPresentation
+import org.sagebionetworks.research.presentation.recorder.RestartableRecorderConfiguration
 import org.sagebionetworks.research.presentation.recorder.sensor.SensorRecorderConfigPresentationFactory
-import org.sagebionetworks.research.presentation.recorder.service.RecorderManager
+import org.sagebionetworks.research.presentation.recorder.service.RecorderService
+import org.sagebionetworks.research.presentation.recorder.service.RecorderService.RecorderBinder
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.HashSet
 import java.util.Locale
 import java.util.UUID
 import javax.inject.Inject
 
-class ActivityRecorderService : DaggerService() {
+class ActivityRecorderService : DaggerService(), ServiceConnection {
     private var isRecording = false
 
     @Inject
@@ -73,7 +82,7 @@ class ActivityRecorderService : DaggerService() {
     @Inject
     lateinit var recorderConfigPresentationFactory: SensorRecorderConfigPresentationFactory
 
-    private lateinit var recorderManager: RecorderManager
+    // private lateinit var recorderManager: RecorderManager
 
     private val asyncActions = mutableSetOf<AsyncActionConfiguration>(
         DeviceMotionRecorderConfigurationImpl.builder()
@@ -102,24 +111,46 @@ class ActivityRecorderService : DaggerService() {
             .setSteps(steps)
             .build()
 
+    private lateinit var taskResultManagerConnectionSingle: Single<TaskResultManagerConnection>
+    private var binder: RecorderBinder? = null
+
+    /**
+     * Invariant: bound == true exactly when binder != null && service != null. binder == null exactly when service ==
+     * null.
+     */
+    private var bound = false
+    private var service: RecorderService? = null
+
+    private lateinit var compositeDisposable: CompositeDisposable
+    private lateinit var recorderConfigs: Set<RecorderConfigPresentation>
+
+    private lateinit var taskRunUUID: UUID
+
     override fun onCreate() {
+        Log.d(TAG, "onCreate")
         super.onCreate()
 
-        val taskUUID = UUID.randomUUID()
+        setupRecorderManager()
+    }
 
-        Log.d(TAG, "onCreate: $taskUUID")
+    private fun setupRecorderManager() {
+        taskRunUUID = UUID.randomUUID()
+        Log.d(TAG, "-- taskUUID: $taskRunUUID")
+//        recorderManager = RecorderManager(task, TASK_IDENTIFIER, taskUUID, this.baseContext,
+//                taskResultManager, recorderConfigPresentationFactory)
 
-        recorderManager = RecorderManager(task, TASK_IDENTIFIER, taskUUID, this,
-                taskResultManager, recorderConfigPresentationFactory)
+        taskResultManagerConnectionSingle = taskResultManager.getTaskResultManagerConnection(TASK_IDENTIFIER, taskRunUUID)
+        compositeDisposable = CompositeDisposable()
+        recorderConfigs = this.getRecorderConfigs()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand: startId = $startId, isRecording = $isRecording")
 
         intent?.let {
-            when (val event = it.getIntExtra(EVENT, -1)) {
-                STARTED_WALKING -> startRecording()
-                STOPPED_WALKING -> stopRecording()
+            when (val event = it.getSerializableExtra(EVENT) as Event) {
+                Event.STARTED_WALKING -> startRecording()
+                Event.STOPPED_WALKING -> stopRecording()
                 else -> Log.d(TAG, "EVENT is invalid: $event")
             }
         }
@@ -155,13 +186,13 @@ class ActivityRecorderService : DaggerService() {
                 Log.d(TAG, "-- startRecording ${timeToDateStr(now)}")
                 isRecording = true
                 startForeground()
-//                CoroutineScope(Dispatchers.Default).launch {
-//                    delay(MAX_RECORDING_TIME_MS)
-//                    stopRecording()
-//                }
+
                 // NOTE: Currently RecorderService within RecorderManager is not bound, need to fix
                 // don't care about navDirection
-                recorderManager.onStepTransition(null, startStep, 0)
+                // recorderManager.onStepTransition(null, startStep, 0)
+                // onStepTransition(null, startStep, 0)
+                val bindIntent = Intent(this, RecorderService::class.java)
+                bindService(bindIntent, this, Context.BIND_AUTO_CREATE)
             } else {
                 Log.d(TAG, "-- NOT RECORDING - ONLY RECORD ONCE EVERY $MIN_FREQUENCY_MS")
                 stopSelf()
@@ -207,7 +238,8 @@ class ActivityRecorderService : DaggerService() {
                 "-- stopRecording ${SimpleDateFormat(TIME_PATTERN, Locale.US).format(Date())}"
             )
             isRecording = false
-            recorderManager.onStepTransition(stopStep, null, 0)
+            // recorderManager.onStepTransition(stopStep, null, 0)
+            onStepTransition(stopStep, null, null)
 
             val sharedPrefs = getSharedPreferences(TRANSITION_PREFS, Context.MODE_PRIVATE)
             sharedPrefs.edit().putLong(LAST_RECORDED_AT, Date().time).apply()
@@ -221,8 +253,188 @@ class ActivityRecorderService : DaggerService() {
 
     override fun onDestroy() {
         Log.d(TAG, "onDestroy")
-        unbindService(recorderManager)
+        // unbindService(recorderManager)
+        unbindService(this)
         super.onDestroy()
+    }
+
+    /**
+     * Returns a map of Recorder Id to Recorder containing all of the recorders that are currently active. An active
+     * recorder is any recorder that has been created and has not had stop() called on it.
+     *
+     * @return A map of Recorder Id to Recorder containing all of the active recorders.
+     */
+    private fun getActiveRecorders(): ImmutableMap<String?, Recorder<out Result?>> {
+        return if (bound) {
+            service!!.getActiveRecorders(this.taskRunUUID)
+        } else {
+            Log.w(TAG, "Cannot get active recorders Service is not bound")
+            ImmutableMap.of()
+        }
+    }
+
+    override fun onServiceConnected(componentName: ComponentName?, iBinder: IBinder?) {
+        binder = (iBinder as RecorderBinder?)!!
+        service = binder!!.service
+        bound = true
+        val activeRecorders: Map<String?, Recorder<out Result?>> = getActiveRecorders()
+        try {
+            for (config in recorderConfigs) {
+                if (!activeRecorders.containsKey(config.identifier)) {
+                    service!!.createRecorder(this.taskRunUUID, config)
+                }
+            }
+            onStepTransition(null, startStep, null)
+        } catch (e: IOException) {
+            Log.w(TAG, "Encountered IOException while initializing recorders", e)
+            // TODO rkolmos 8/13/2018 handle the IOException.
+        }
+    }
+
+    override fun onServiceDisconnected(componentName: ComponentName?) {
+        binder = null
+        service = null
+        bound = false
+        compositeDisposable.dispose()
+    }
+
+    /**
+     * Starts, stops, and cancels the appropriate recorders in response to the step transition from previousStep to
+     * nextStep in navDirection.
+     *
+     * @param previousStep The step that has just been transitioned away from, null indicates that nextStep is the first step.
+     * @param nextStep     The step that has just been transition to, null indicates that previousStep is the last step.
+     * @param navDirection The direction in which the transition from previousStep to nextStep occurred in.
+     */
+    private fun onStepTransition(previousStep: Step?, nextStep: Step?, @NavDirection navDirection: Int?) {
+        Log.d(TAG,"onStepTransition called from: $previousStep, to: $nextStep in direction: $navDirection")
+        val shouldStart: MutableSet<RecorderConfigPresentation> = HashSet()
+        val shouldCancel: Set<RecorderConfigPresentation?> = HashSet()
+        val shouldStop: MutableSet<RecorderConfigPresentation?> = HashSet()
+
+        // There are a few scenarios I can think of that
+        for (config in recorderConfigs) {
+            val startStepIdentifier = config.startStepIdentifier
+            val stopStepIdentifier = config.stopStepIdentifier
+
+            // No matter the navigation direction, if we are leaving the stop step, we should stop the recorder
+            if (previousStep != null && stopStepIdentifier == previousStep.identifier) {
+                Log.d(TAG, "previousStep is stopStep, stopping recorder config " + config.identifier)
+                // The recorder should be stopped. Since it's stop step identifier has just ended.
+                shouldStop.add(config)
+            }
+            if (nextStep != null && startStepIdentifier != null && startStepIdentifier == nextStep.identifier) {
+                Log.d(TAG,"nextStep is startStep, starting recorder config " + config.identifier)
+                // The recorder should be started since we are navigating to it's start step.
+                shouldStart.add(config)
+            }
+
+            // Did user navigate backwards?
+            if (navDirection == NavDirection.SHIFT_RIGHT) {
+                // There may be more scenarios we encounter as we add more complex navigation for recorders;
+                // however, for now let's make sure that if we navigate backwards from the start step,
+                // the recorder knows it should be stopped, because the previous step started it.
+                if (previousStep != null && startStepIdentifier != null && startStepIdentifier == previousStep.identifier) {
+                    shouldStop.add(config)
+                }
+            }
+        }
+
+        // recorders configured to cancel, or to both start and stop. let's not stop or start them
+        val startAndStopOrCancel: Set<RecorderConfigPresentation?> = Sets
+                .union(
+                        Sets.intersection(shouldStart,
+                                shouldStop), shouldCancel)
+        if (bound) {
+            val activeRecorders: Map<String?, Recorder<out Result?>> = getActiveRecorders()
+            for (config in Sets.difference(
+                    shouldStart, startAndStopOrCancel)) {
+                var activeRecorder = activeRecorders[config.identifier]
+                // This is important to call before creating the result because this may
+                // re-create the recorder to prep for a proper recorder restart
+                activeRecorder = validateRecorderStateBeforeStart(activeRecorder, config)
+                if (activeRecorder != null) {
+                    // Only wait for results of recorders which were started
+                    taskResultManagerConnectionSingle.blockingGet()
+                            .addAsyncActionResult(activeRecorder.result)
+                    service!!.startRecorder(this.taskRunUUID, config.identifier)
+                    Log.d(TAG, "Starting recorder " + config.identifier)
+                } else {
+                    // Recorder data will not be collected and uploaded here, but at least the app will not crash
+                    Log.d(TAG, "Failed to restart recorder " + config.identifier)
+                }
+            }
+            for (config in Sets.difference(shouldStop, startAndStopOrCancel)) {
+                val identifier = config!!.identifier
+                if (activeRecorders.containsKey(identifier)) {
+                    if (activeRecorders[identifier]!!.isRecording) {
+                        Log.d(TAG, "${this.taskRunUUID}, $identifier")
+                        Log.d(TAG, "Stopping recorder " + config.identifier)
+                    }
+                }
+            }
+            for (config in shouldCancel) {
+                val identifier = config!!.identifier
+                if (activeRecorders.containsKey(identifier)) {
+                    if (activeRecorders[identifier]!!.isRecording) {
+                        Log.d(TAG, "Canceling recorder " + config.identifier)
+                        service!!.cancelRecorder(this.taskRunUUID, identifier)
+                    }
+                }
+            }
+        } else {
+            Log.w(TAG, "OnStepTransition was called but RecorderService was unbound.")
+            // TODO: rkolmos 06/20/2018 handle the service being unbound
+        }
+    }
+
+    /**
+     * Validate the state of the recorder so we know it is ok to start it without having any restart complications.
+     * @param recorder we will be starting
+     * @param config the config of the recorder that will be starting
+     */
+    private fun validateRecorderStateBeforeStart(
+            recorder: Recorder<out Result?>?,
+            config: RecorderConfigPresentation): Recorder<out Result?>? {
+        var recorder = recorder
+        if (recorder == null) {
+            // A null active recorder here means that the recorder has already run and been completed
+            if (config is RestartableRecorderConfiguration) {
+                check(config.shouldDeletePrevious) {
+                    // To support Recorder restart with appending data functionality,
+                    // We will need to somehow pass in a flag to ReactiveFileResultRecorder to
+                    // signal it to open the outputFile for appending.
+                    "RecorderManager cannot restart this recorder " +
+                            "because getShouldDeletePrevious returns false and recorder appending is not supported yet."
+                }
+
+                // At this point, we know that the dev has configured the recorder properly to restart
+                // and they are ok with the recorder file being replaced by the new one.
+                // In this case, let's re-create the recorder to allow it to restart appropriately.
+                try {
+                    Log.i(TAG, "Recreating restartable recorder " + config.getIdentifier())
+                    recorder = service!!.createRecorder(this.taskRunUUID, config)
+                } catch (e: IOException) {
+                    Log.e(TAG,"Encountered IOException while initializing recorder " + config.getIdentifier(), e)
+                }
+            } else {
+                throw IllegalStateException("RecorderManager cannot restart a recorder unless it\'s " +
+                        "configured as a RestartableRecorderConfiguration and specifies " +
+                        "it should delete the previous data file when restarting")
+            }
+        }
+        return recorder
+    }
+
+    private fun getRecorderConfigs(): Set<RecorderConfigPresentation> {
+        val recorderConfigs: MutableSet<RecorderConfigPresentation> = HashSet()
+        for (asyncAction in task.asyncActions) {
+            if (asyncAction is RecorderConfiguration) {
+                recorderConfigs.add(
+                        recorderConfigPresentationFactory.create(asyncAction))
+            }
+        }
+        return recorderConfigs
     }
 
     inner class PassiveGaitStep(identifier: String, asyncActions: Set<AsyncActionConfiguration>)
@@ -231,6 +443,10 @@ class ActivityRecorderService : DaggerService() {
         override fun copyWithIdentifier(identifier: String): PassiveGaitStep {
             throw UnsupportedOperationException("PassiveGait steps cannot be copied")
         }
+    }
+
+    enum class Event {
+        STARTED_WALKING, STOPPED_WALKING
     }
 
     companion object {
@@ -251,9 +467,5 @@ class ActivityRecorderService : DaggerService() {
         private const val MAX_RECORDING_TIME_MS: Long = 1000 * 30
 
         const val EVENT = "EVENT"
-
-        const val STARTED_WALKING = 1
-
-        const val STOPPED_WALKING = 0
     }
 }
