@@ -32,18 +32,19 @@
 
 package org.sagebionetworks.research.mpower
 
-import android.R
 import android.view.View
 import android.view.ViewGroup
 import androidx.test.espresso.Espresso
+import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.NoMatchingViewException
 import androidx.test.espresso.action.ViewActions
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers
-import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.filters.LargeTest
 import androidx.test.rule.ActivityTestRule
 import androidx.test.runner.AndroidJUnit4
+import it.xabaras.android.espresso.recyclerviewchildactions.RecyclerViewChildActions.Companion.childOfViewAtPositionWithMatcher
 import org.hamcrest.Description
 import org.hamcrest.Matcher
 import org.hamcrest.Matchers
@@ -52,7 +53,6 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.sagebionetworks.research.mpower.R.id
 
 @LargeTest
 @RunWith(AndroidJUnit4::class)
@@ -68,10 +68,10 @@ class FromEntryActivityToSettingsTest {
         try {
             //check that user is not signed in. If he is, skip sing in part
             val appCompatButton = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.button_go_forward), ViewMatchers.withText("Next"),
+                    Matchers.allOf(ViewMatchers.withId(R.id.button_go_forward), ViewMatchers.withText("Next"),
                             childAtPosition(
                                     childAtPosition(
-                                            ViewMatchers.withId(id.bp_next_button_container),
+                                            ViewMatchers.withId(R.id.bp_next_button_container),
                                             0),
                                     2),
                             ViewMatchers.isDisplayed()))
@@ -87,22 +87,22 @@ class FromEntryActivityToSettingsTest {
         if (!skipSingInPart) {
 
             val appCompatButton = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.button_go_forward), ViewMatchers.withText("Next"),
+                    Matchers.allOf(ViewMatchers.withId(R.id.button_go_forward), ViewMatchers.withText("Next"),
                             childAtPosition(
                                     childAtPosition(
-                                            ViewMatchers.withId(id.bp_next_button_container),
+                                            ViewMatchers.withId(R.id.bp_next_button_container),
                                             0),
                                     2),
                             ViewMatchers.isDisplayed()))
             appCompatButton.perform(ViewActions.click())
 
             val appCompatTextView = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.internal_sign_in_link),
+                    Matchers.allOf(ViewMatchers.withId(R.id.internal_sign_in_link),
                             ViewMatchers.withText("Click for External ID login [TEST BUILD]"),
                             childAtPosition(
-                                    Matchers.allOf(ViewMatchers.withId(id.mp_root_instruction_layout),
+                                    Matchers.allOf(ViewMatchers.withId(R.id.mp_root_instruction_layout),
                                             childAtPosition(
-                                                    ViewMatchers.withId(id.mp_step_layout_container),
+                                                    ViewMatchers.withId(R.id.mp_step_layout_container),
                                                     0)),
                                     5),
                             ViewMatchers.isDisplayed()))
@@ -111,7 +111,7 @@ class FromEntryActivityToSettingsTest {
             Thread.sleep(1000)
 
             val appCompatEditText = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.firstName),
+                    Matchers.allOf(ViewMatchers.withId(R.id.firstName),
                             childAtPosition(
                                     childAtPosition(
                                             ViewMatchers.withId(R.id.content),
@@ -121,7 +121,7 @@ class FromEntryActivityToSettingsTest {
             appCompatEditText.perform(ViewActions.replaceText("ella"), ViewActions.closeSoftKeyboard())
 
             val appCompatEditText2 = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.externalId),
+                    Matchers.allOf(ViewMatchers.withId(R.id.externalId),
                             childAtPosition(
                                     childAtPosition(
                                             ViewMatchers.withId(R.id.content),
@@ -131,7 +131,7 @@ class FromEntryActivityToSettingsTest {
             appCompatEditText2.perform(ViewActions.replaceText("HF20200318C"), ViewActions.closeSoftKeyboard())
 
             val appCompatCheckBox = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.skipConsent), ViewMatchers.withText("Skip Consent"),
+                    Matchers.allOf(ViewMatchers.withId(R.id.skipConsent), ViewMatchers.withText("Skip Consent"),
                             childAtPosition(
                                     childAtPosition(
                                             ViewMatchers.withId(R.id.content),
@@ -141,7 +141,7 @@ class FromEntryActivityToSettingsTest {
             appCompatCheckBox.perform(ViewActions.click())
 
             val appCompatButton2 = Espresso.onView(
-                    Matchers.allOf(ViewMatchers.withId(id.signIn), ViewMatchers.withText("Sign In"),
+                    Matchers.allOf(ViewMatchers.withId(R.id.signIn), ViewMatchers.withText("Sign In"),
                             childAtPosition(
                                     childAtPosition(
                                             ViewMatchers.withId(R.id.content),
@@ -154,21 +154,21 @@ class FromEntryActivityToSettingsTest {
         }
 
         val bottomNavigationItemView = Espresso.onView(
-                Matchers.allOf(ViewMatchers.withId(id.navigation_profile),
+                Matchers.allOf(ViewMatchers.withId(R.id.navigation_profile),
                         ViewMatchers.withContentDescription("Profile"),
                         childAtPosition(
                                 childAtPosition(
-                                        ViewMatchers.withId(id.navigation),
+                                        ViewMatchers.withId(R.id.navigation),
                                         0),
                                 2),
                         ViewMatchers.isDisplayed()))
         bottomNavigationItemView.perform(ViewActions.click())
 
         val appCompatImageView = Espresso.onView(
-                Matchers.allOf(ViewMatchers.withId(id.settings_icon),
+                Matchers.allOf(ViewMatchers.withId(R.id.settings_icon),
                         childAtPosition(
                                 childAtPosition(
-                                        ViewMatchers.withId(id.fragment_container),
+                                        ViewMatchers.withId(R.id.fragment_container),
                                         0),
                                 2),
                         ViewMatchers.isDisplayed()))
@@ -176,45 +176,47 @@ class FromEntryActivityToSettingsTest {
 
         Thread.sleep(1000)
 
-         val constraintLayout = Espresso.onView(
-                 Matchers.allOf(ViewMatchers.withId(id.background),
-                         childAtPosition(
-                                 Matchers.allOf(ViewMatchers.withId(id.list),
-                                         childAtPosition(
-                                                 ViewMatchers.withClassName(
-                                                         Matchers.`is`("android.widget.RelativeLayout")),
-                                                 3)),
-                                 2),
-                         ViewMatchers.isDisplayed()))
-         constraintLayout.perform(ViewActions.click())
+        /*    val constraintLayout = Espresso.onView(
+                    Matchers.allOf(ViewMatchers.withId(R.id.background),
+                            childAtPosition(
+                                    Matchers.allOf(ViewMatchers.withId(R.id.list),
+                                            childAtPosition(
+                                                    ViewMatchers.withClassName(
+                                                            Matchers.`is`("android.widget.RelativeLayout")),
+                                                    3)),
+                                    2),
+                            ViewMatchers.isDisplayed()))
+            constraintLayout.perform(ViewActions.click())
 
-         Thread.sleep(1000)
+            Thread.sleep(1000)
 
-         val appCompatButton3 = Espresso.onView(
-                 Matchers.allOf(ViewMatchers.withId(id.radio_okay), ViewMatchers.withText("Okay"),
-                         ViewMatchers.isDisplayed()))
+            val appCompatButton3 = Espresso.onView(
+                    Matchers.allOf(ViewMatchers.withId(R.id.radio_okay), ViewMatchers.withText("Okay"),
+                            ViewMatchers.isDisplayed()))
 
-         appCompatButton3.perform(ViewActions.click())
+            appCompatButton3.perform(ViewActions.click())
 
-         val appCompatButton4 = Espresso.onView(
-                 Matchers.allOf(ViewMatchers.withId(id.done_button), ViewMatchers.withText("Save"),
-                         childAtPosition(
+           Thread.sleep(1000)
+            val appCompatButton4 = onView(
+                    Matchers.allOf( ViewMatchers.withId(R.id.done_button),ViewMatchers.withText("Save"),
+                           *//* childAtPosition(
                                  childAtPosition(
                                          ViewMatchers.withId(R.id.content),
                                          0),
-                                 5),
-                         ViewMatchers.isDisplayed()))
+                                 5),*//*
+                         isDisplayed()))
          appCompatButton4.perform(ViewActions.click())
-         Thread.sleep(1000)
+         Thread.sleep(1000)*/
 
-       // checkOnEnable()
+        checkOnEnable()
+        checkOnDisable()
     }
 
     fun checkOnEnable() {
-        val constraintLayout = Espresso.onView(
-                Matchers.allOf(ViewMatchers.withId(id.background),
+        val constraintLayout = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.background),
                         childAtPosition(
-                                Matchers.allOf(ViewMatchers.withId(id.list),
+                                Matchers.allOf(ViewMatchers.withId(R.id.list),
                                         childAtPosition(
                                                 ViewMatchers.withClassName(
                                                         Matchers.`is`("android.widget.RelativeLayout")),
@@ -223,56 +225,57 @@ class FromEntryActivityToSettingsTest {
                         ViewMatchers.isDisplayed()))
         constraintLayout.perform(ViewActions.click())
 
-        val appCompatButton3 = Espresso.onView(
-                Matchers.allOf(ViewMatchers.withId(id.radio_okay), ViewMatchers.withText("Okay"),
+        val appCompatButton3 = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.radio_okay), ViewMatchers.withText("Okay"),
                         ViewMatchers.isDisplayed()))
 
         appCompatButton3.perform(ViewActions.click())
 
-        val appCompatButton4 = Espresso.onView(
-                Matchers.allOf(ViewMatchers.withId(id.done_button), ViewMatchers.withText("Save"),
-                        childAtPosition(
-                                childAtPosition(
-                                        ViewMatchers.withId(R.id.content),
-                                        0),
-                                5),
+        val appCompatButton4 = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.done_button), ViewMatchers.withText("Save"),
                         ViewMatchers.isDisplayed()))
         appCompatButton4.perform(ViewActions.click())
-        Thread.sleep(7000)
+        Thread.sleep(6000)
 
-        val constraintLayout2 = Espresso.onView(
-                Matchers.allOf(
-                        childAtPosition(
-                                Matchers.allOf(ViewMatchers.withId(id.list),
-                                        childAtPosition(Matchers.allOf(
-                                                ViewMatchers.withId(id.background),
-                                                Matchers.allOf(childAtPosition(ViewMatchers.withClassName(
-                                                        Matchers.`is`("android.widget.TextView")),
-                                                        /*withText("Enabled"),*/
-                                                        1
-                                                ))),
-                                                /*  ViewMatchers.withClassName(
-                                                          Matchers.`is`("android.widget.TextView")),*/
-                                                3)),
-                                2),
-                        isDisplayed()))
-
-        constraintLayout2.check(matches(isDisplayed()))
+        onView(
+                ViewMatchers.withId(R.id.list))
+                .check(matches(
+                        childOfViewAtPositionWithMatcher(R.id.item_detail, 2,
+                                withText("Enabled"))))
     }
 
-    /*  fun checkOnDisable(){
-
-         val appCompatButton5 = Espresso.onView(
-                        Matchers.allOf(ViewMatchers.withId(id.radio_not_now), ViewMatchers.withText("Not Now"),
-                                   childAtPosition(
+    fun checkOnDisable() {
+        val constraintLayout = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.background),
+                        childAtPosition(
+                                Matchers.allOf(ViewMatchers.withId(R.id.list),
                                         childAtPosition(
-                                                ViewMatchers.withId(R.id.content),
-                                                1),
-                                        4),
-                          ViewMatchers.isDisplayed()))
+                                                ViewMatchers.withClassName(
+                                                        Matchers.`is`("android.widget.RelativeLayout")),
+                                                3)),
+                                2),
+                        ViewMatchers.isDisplayed()))
+        constraintLayout.perform(ViewActions.click())
+        Thread.sleep(1000)
 
-          appCompatButton5.perform(ViewActions.click())
-      }*/
+        val appCompatButton3 = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.radio_not_now), ViewMatchers.withText("Not Now"),
+                        ViewMatchers.isDisplayed()))
+
+        appCompatButton3.perform(ViewActions.click())
+
+        val appCompatButton4 = onView(
+                Matchers.allOf(ViewMatchers.withId(R.id.done_button), ViewMatchers.withText("Save"),
+                        ViewMatchers.isDisplayed()))
+        appCompatButton4.perform(ViewActions.click())
+        Thread.sleep(5000)
+
+        onView(
+                ViewMatchers.withId(R.id.list))
+                .check(matches(
+                        childOfViewAtPositionWithMatcher(R.id.item_detail, 2,
+                                withText("Disabled"))))
+    }
 
     private fun childAtPosition(
             parentMatcher: Matcher<View>, position: Int): Matcher<View> {
