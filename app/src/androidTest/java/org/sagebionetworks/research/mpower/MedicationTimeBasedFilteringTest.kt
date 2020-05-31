@@ -1,13 +1,15 @@
 package org.sagebionetworks.research.mpower
 
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
-import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.RangeSet
-import org.junit.*
 import org.junit.Assert.*
-import org.junit.runner.*
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
 import org.sagebionetworks.research.mpower.tracking.model.TrackingItem
 import org.sagebionetworks.research.mpower.tracking.model.TrackingStep
 import org.sagebionetworks.research.mpower.tracking.model.TrackingStepView
@@ -22,8 +24,7 @@ import org.sagebionetworks.research.mpower.tracking.view_model.logs.MedicationTi
 import org.threeten.bp.LocalDateTime
 import org.threeten.bp.LocalTime
 import org.threeten.bp.Month
-import java.util.Arrays
-import java.util.Collections
+import java.util.*
 
 @RunWith(AndroidJUnit4::class)
 class MedicationTimeBasedFilteringTest {
@@ -72,8 +73,10 @@ class MedicationTimeBasedFilteringTest {
         val CONFIG_3: MedicationLog
 
         init {
-            val timeStamp1 = MedicationTimestamp.builder().setTimeOfDay("13:00")!!.build()
-            val timeStamp2 = MedicationTimestamp.builder().setTimeOfDay("18:00")!!.build()
+            val timeStamp1 = MedicationTimestamp.builder().setTimeOfDay("13:00")?.build()
+                    ?: MedicationTimestamp.builder().build()
+            val timeStamp2 = MedicationTimestamp.builder().setTimeOfDay("18:00")?.build()
+                    ?: MedicationTimestamp.builder().build()
             val days = setOf(7, 1)
 
             CONFIG_3 = MedicationLog.builder()

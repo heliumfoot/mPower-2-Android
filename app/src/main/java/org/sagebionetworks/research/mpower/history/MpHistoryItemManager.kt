@@ -95,10 +95,10 @@ class MpHistoryItemManager(val historyItemDao: HistoryItemEntityDao): HistoryIte
         for(report in reports) {
             val dateBucket = getDateBucket(report)
             val details = createMeasurementHistoryDetails(type, report)
-            val historyItem = HistoryItem(type, report.identifier!!, dateBucket, report.dateTime!!, details)
+            val historyItem = HistoryItem(type, report.identifier?:"", dateBucket, report.dateTime?: Instant.now(), details)
             historyList.add(historyItem.toHistoryItemEntity())
             historyList.add(createDateBucketHistoryItemEntity(dateBucket))
-            historyList.add(createTimeBucketHistoryItemEntity(dateBucket, report.dateTime!!))
+            historyList.add(createTimeBucketHistoryItemEntity(dateBucket, report.dateTime?: Instant.now()))
         }
         historyItemDao.update(historyList)
     }
@@ -146,10 +146,10 @@ class MpHistoryItemManager(val historyItemDao: HistoryItemEntityDao): HistoryIte
                 for (logItem in log.items) {
                     if (logItem.loggedDate != null) {
                         val details = TriggerDetails(logItem.text)
-                        val historyItem = HistoryItem(TRIGGER, report.identifier!!, dateBucket, logItem.loggedDate!!,
+                        val historyItem = HistoryItem(TRIGGER, report.identifier?:"", dateBucket, logItem.loggedDate?: Instant.now(),
                                 details)
                         triggerList.add(historyItem.toHistoryItemEntity())
-                        triggerList.add(createTimeBucketHistoryItemEntity(dateBucket, logItem.loggedDate!!))
+                        triggerList.add(createTimeBucketHistoryItemEntity(dateBucket, logItem.loggedDate?: Instant.now()))
                     }
                 }
                 triggerList.add(createDateBucketHistoryItemEntity(dateBucket))
@@ -170,10 +170,10 @@ class MpHistoryItemManager(val historyItemDao: HistoryItemEntityDao): HistoryIte
                     if (symptom.loggedDate != null) {
                         val details = SymptomDetails(symptom.text, symptom.medicationTiming, symptom.duration,
                                 symptom.severity)
-                        val historyItem = HistoryItem(SYMPTOM, report.identifier!!, dateBucket, symptom.loggedDate!!,
+                        val historyItem = HistoryItem(SYMPTOM, report.identifier?:"", dateBucket, symptom.loggedDate?: Instant.now(),
                                 details)
                         symptomList.add(historyItem.toHistoryItemEntity())
-                        symptomList.add(createTimeBucketHistoryItemEntity(dateBucket, symptom.loggedDate!!))
+                        symptomList.add(createTimeBucketHistoryItemEntity(dateBucket, symptom.loggedDate?: Instant.now()))
                     }
                 }
                 symptomList.add(createDateBucketHistoryItemEntity(dateBucket))
@@ -195,9 +195,9 @@ class MpHistoryItemManager(val historyItemDao: HistoryItemEntityDao): HistoryIte
                         for (timestamp in dosage.timestamps) {
                             if (timestamp.loggedDate != null) {
                                 val details = MedicationDetails(med.identifier, dosage.dosage, timestamp.timeOfDay)
-                                val historyItem = HistoryItem(MEDICATION, report.identifier!!, dateBucket, timestamp.loggedDate!!, details)
+                                val historyItem = HistoryItem(MEDICATION, report.identifier?:"", dateBucket, timestamp.loggedDate?: Instant.now(), details)
                                 medList.add(historyItem.toHistoryItemEntity())
-                                medList.add(createTimeBucketHistoryItemEntity(dateBucket, timestamp.loggedDate!!))
+                                medList.add(createTimeBucketHistoryItemEntity(dateBucket, timestamp.loggedDate?: Instant.now()))
                             }
                         }
                     }
