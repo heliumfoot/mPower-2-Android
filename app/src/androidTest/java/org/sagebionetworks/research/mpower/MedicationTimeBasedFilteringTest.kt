@@ -73,10 +73,8 @@ class MedicationTimeBasedFilteringTest {
         val CONFIG_3: MedicationLog
 
         init {
-            val timeStamp1 = MedicationTimestamp.builder().setTimeOfDay("13:00")?.build()
-                    ?: MedicationTimestamp.builder().build()
-            val timeStamp2 = MedicationTimestamp.builder().setTimeOfDay("18:00")?.build()
-                    ?: MedicationTimestamp.builder().build()
+            val timeStamp1 = MedicationTimestamp.builder().setTimeOfDay("13:00")!!.build()
+            val timeStamp2 = MedicationTimestamp.builder().setTimeOfDay("18:00")!!.build()
             val days = setOf(7, 1)
 
             CONFIG_3 = MedicationLog.builder()
