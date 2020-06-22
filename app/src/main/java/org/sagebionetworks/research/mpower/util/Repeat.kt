@@ -56,7 +56,7 @@ class Repeat(
         job?.cancel()
         if (wait > 0) {
             job = CoroutineScope(context).launch {
-                while (startTime + expiresAfter < System.currentTimeMillis()) {//TODO maybe its not correct
+                while (startTime + expiresAfter > System.currentTimeMillis()) {//TODO maybe its not correct
                     delay(wait)
                     fn()
                 }

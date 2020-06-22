@@ -116,11 +116,7 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
 
     private val recordTimer = Repeat(1000, fn = {
         val elapsedTimeStr = "${MAX_RECORDING_TIME_SEC - ++elapsedTime}".padStart(2, '0')
-        if (elapsedTime >= MAX_RECORDING_TIME_SEC) {
-            stopRecording()
-        } else {
-            updateNotification("${getText(string.recording_notification_message)}$elapsedTimeStr")
-        }
+        updateNotification("${getText(string.recording_notification_message)}$elapsedTimeStr")
     }, endFn = { stopRecording() }, context = Dispatchers.Default)
 
     private var state: State = NEW
