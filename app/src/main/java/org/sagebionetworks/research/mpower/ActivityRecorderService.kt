@@ -88,28 +88,24 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
     private var recorderManager: RecorderManager? = null
 
     private val asyncActions = mutableSetOf<AsyncActionConfiguration>(
-        DeviceMotionRecorderConfigurationImpl.builder()
-            .setIdentifier(ACTION_IDENTIFIER)
-            .setStartStepIdentifier(RecorderActionType.START)
-            .setStopStepIdentifier(RecorderActionType.STOP)
-            .setFrequency(null)
-            .setRecorderTypes(mutableSetOf(
-                MotionRecorderType.USER_ACCELERATION,
-                MotionRecorderType.MAGNETIC_FIELD,
-                MotionRecorderType.ROTATION_RATE,
-                MotionRecorderType.GYROSCOPE
-            ))
-            .build()
+            DeviceMotionRecorderConfigurationImpl.builder()
+                    .setIdentifier(ACTION_IDENTIFIER)
+                    .setStartStepIdentifier(RecorderActionType.START)
+                    .setStopStepIdentifier(RecorderActionType.STOP)
+                    .setFrequency(null)
+                    .setRecorderTypes(mutableSetOf(
+                            MotionRecorderType.USER_ACCELERATION,
+                            MotionRecorderType.MAGNETIC_FIELD,
+                            MotionRecorderType.ROTATION_RATE,
+                            MotionRecorderType.GYROSCOPE
+                    ))
+                    .build()
     )
 
     private val startStep = PassiveGaitStep(RecorderActionType.START, asyncActions)
-
     private val stopStep = PassiveGaitStep(RecorderActionType.STOP, asyncActions)
-
     private val steps = mutableListOf<Step>(startStep, stopStep)
-
     private val taskUUID = UUID.randomUUID()
-
     private val task = TaskBase.builder()
             .setIdentifier(TASK_IDENTIFIER)
             .setAsyncActions(asyncActions)
@@ -118,17 +114,16 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
 
     private var elapsedTime = 0L
 
-    private val recordTimer = Repeat(1000, {
+    private val recordTimer = Repeat(1000, fn = {
         val elapsedTimeStr = "${MAX_RECORDING_TIME_SEC - ++elapsedTime}".padStart(2, '0')
-        if (elapsedTime == MAX_RECORDING_TIME_SEC) {
+        if (elapsedTime >= MAX_RECORDING_TIME_SEC) {
             stopRecording()
         } else {
             updateNotification("${getText(string.recording_notification_message)}$elapsedTimeStr")
         }
-    }, Dispatchers.Default)
+    }, endFn = { stopRecording() }, context = Dispatchers.Default)
 
     private var state: State = NEW
-
     private var recorderService: RecorderService? = null
 
     override fun onCreate() {
@@ -220,7 +215,7 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
                 .build()
     }
 
-    private fun updateNotification(text:String) {
+    private fun updateNotification(text: String) {
         (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .notify(FOREGROUND_NOTIFICATION_ID, createNotification(text))
     }
@@ -247,8 +242,8 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
     private fun stopRecording() {
         if (state == RECORDING) {
             Log.d(
-                TAG,
-                "-- stopRecording ($state): ${SimpleDateFormat(TIME_PATTERN, Locale.US).format(Date())}"
+                    TAG,
+                    "-- stopRecording ($state): ${SimpleDateFormat(TIME_PATTERN, Locale.US).format(Date())}"
             )
 
             recordTimer.cancel()
@@ -270,7 +265,6 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
         if (state == NEW || state == CONNECTING) {
             finish()
         }
-
     }
 
     private fun saveToBridge() {
@@ -322,23 +316,14 @@ class ActivityRecorderService : DaggerService(), RecorderServiceConnectionListen
 
     companion object {
         private const val TAG = "ActivityRecorderService"
-
         private const val TASK_IDENTIFIER = MpIdentifier.PASSIVE_GAIT
-
         private const val ACTION_IDENTIFIER = "walk_motion"
-
         private const val TRANSITION_PREFS = "transitionPrefs"
-
         private const val LAST_RECORDED_AT = "lastRecordedAt"
-
         private const val TIME_PATTERN = "HH:mm:ss"
-
         private const val FOREGROUND_NOTIFICATION_ID = 100
-
         private const val MIN_FREQUENCY_MS: Long = 1000 * 60 * 3
-
         private const val MIN_RECORDING_TIME_SEC = 15L
-
         private const val MAX_RECORDING_TIME_SEC = 30L
 
         const val EVENT = "EVENT"
